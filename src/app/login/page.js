@@ -1,105 +1,86 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  async function handleLogin(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setError('');
+    setSubmitting(true);
 
-    const supabase = createClient();
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (authError) {
-      setError("Email ya password galat hai.");
-      setLoading(false);
+    if (signInError) {
+      setSubmitting(false);
+      setError('Invalid email or password.');
       return;
     }
 
-    // Check if this user is a super_admin or institute_admin
     const { data: adminRow } = await supabase
-      .from("institute_admins")
-      .select("role")
-      .eq("auth_user_id", data.user.id)
-      .single();
+      .from('institute_admins')
+      .select('role')
+      .eq('auth_user_id', data.user.id)
+      .maybeSingle();
 
-    if (!adminRow) {
-      setError("Ye account kisi institute se linked nahi hai.");
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
+    setSubmitting(false);
 
-    if (adminRow.role === "super_admin") {
-      router.push("/super-admin");
+    if (adminRow?.role === 'super_admin') {
+      router.push('/admin');
     } else {
-      router.push("/admin");
+      router.push('/');
     }
   }
 
   return (
-    <div
-      style={{ background: "var(--navy)" }}
-      className="min-h-screen flex items-center justify-center px-4"
-    >
-      <form
-        onSubmit={handleLogin}
-        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm"
-      >
-        <h1 className="font-display text-2xl font-bold mb-1" style={{ color: "var(--navy)" }}>
-          FeeMitra
-        </h1>
-        <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
-          Login karo apne dashboard me
-        </p>
+    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+      <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Sign In</h1>
 
         {error && (
-          <div className="mb-4 text-sm rounded-lg px-3 py-2" style={{ background: "#FBEAE6", color: "var(--danger)" }}>
-            {error}
-          </div>
+          <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>
         )}
 
-        <label className="block text-sm font-medium mb-1">Email</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 mb-4 outline-none focus:ring-2"
-          style={{ borderColor: "#E2E4EA" }}
-        />
-
-        <label className="block text-sm font-medium mb-1">Password</label>
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 mb-6 outline-none focus:ring-2"
-          style={{ borderColor: "#E2E4EA" }}
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg py-2.5 font-semibold text-white"
-          style={{ background: "var(--navy)" }}
-        >
-          {loading ? "Login ho raha hai..." : "Login"}
-        </button>
-      </form>
-    </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-2.5 rounded-lg transition-colors"
+          >
+            {submitting ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+      </div>
+    </main>
   );
 }
