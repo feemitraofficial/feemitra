@@ -39,7 +39,7 @@ export default function LoginPage() {
     if (adminRow?.role === "super_admin") {
       router.push("/super-admin");
     } else {
-      router.push("/");
+      router.push("/admin");
     }
   }
 
