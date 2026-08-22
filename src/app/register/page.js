@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const REG_FEE = 999;
@@ -159,6 +160,9 @@ export default function RegisterPage() {
   return (
     <div style={{ background: "var(--bg)" }} className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <Link href="/" className="flex justify-center mb-6">
+          <img src="/logo.png" alt="FeeMitra" className="h-16" />
+        </Link>
         <h1 className="font-display text-2xl font-bold mb-1" style={{ color: "var(--navy)" }}>
           FeeMitra me Register karo
         </h1>

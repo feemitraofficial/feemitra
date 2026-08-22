@@ -38,7 +38,9 @@ export default function LandingPage() {
       <div className="relative z-10">
       {/* Header */}
       <header className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center">
-        <img src="/logo.png" alt="FeeMitra" className="h-10" />
+        <Link href="/">
+          <img src="/logo.png" alt="FeeMitra" className="h-10" />
+        </Link>
         <Link
           href="/login"
           className="text-sm font-semibold px-4 py-2 rounded-lg"
