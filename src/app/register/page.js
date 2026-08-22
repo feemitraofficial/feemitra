@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const [utr, setUtr] = useState("");
   const [logoFile, setLogoFile] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [instituteId, setInstituteId] = useState(null);
 
@@ -45,9 +46,28 @@ export default function RegisterPage() {
     }));
   }
 
+  function validateDetails() {
+    const errors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[6-9]\d{9}$/; // 10-digit Indian mobile number
+
+    if (!emailRegex.test(form.ownerEmail)) {
+      errors.ownerEmail = "Sahi email daalo (jaise name@example.com)";
+    }
+    if (!phoneRegex.test(form.ownerPhone)) {
+      errors.ownerPhone = "Sahi 10-digit mobile number daalo (6-9 se shuru)";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
   async function handleDetailsSubmit(e) {
     e.preventDefault();
     setError("");
+
+    if (!validateDetails()) return;
+
     setLoading(true);
 
     try {
@@ -184,19 +204,31 @@ export default function RegisterPage() {
               required
               value={form.ownerEmail}
               onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-              style={{ borderColor: "#E2E4EA" }}
+              className="w-full border rounded-lg px-3 py-2 mb-1"
+              style={{ borderColor: fieldErrors.ownerEmail ? "var(--danger)" : "#E2E4EA" }}
+              placeholder="name@example.com"
             />
+            {fieldErrors.ownerEmail && (
+              <p className="text-xs mb-3" style={{ color: "var(--danger)" }}>{fieldErrors.ownerEmail}</p>
+            )}
+            {!fieldErrors.ownerEmail && <div className="mb-4" />}
 
             <label className="block text-sm font-medium mb-1">Phone number</label>
             <input
               name="ownerPhone"
               required
+              inputMode="numeric"
+              maxLength={10}
               value={form.ownerPhone}
               onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-              style={{ borderColor: "#E2E4EA" }}
+              className="w-full border rounded-lg px-3 py-2 mb-1"
+              style={{ borderColor: fieldErrors.ownerPhone ? "var(--danger)" : "#E2E4EA" }}
+              placeholder="10-digit mobile number"
             />
+            {fieldErrors.ownerPhone && (
+              <p className="text-xs mb-3" style={{ color: "var(--danger)" }}>{fieldErrors.ownerPhone}</p>
+            )}
+            {!fieldErrors.ownerPhone && <div className="mb-4" />}
 
             <label className="block text-sm font-medium mb-1">
               Institute ka logo (optional)
