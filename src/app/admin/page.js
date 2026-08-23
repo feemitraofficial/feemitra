@@ -139,7 +139,7 @@ export default function AdminDashboard() {
             </div>
 
             {tab === "Overview" && (
-              <OverviewTab students={students.length} courses={courses.length} revenue={totalRevenue} />
+              <OverviewTab students={students} courses={courses} payments={payments} revenue={totalRevenue} />
             )}
             {tab === "Courses" && (
               <CoursesTab
@@ -155,6 +155,7 @@ export default function AdminDashboard() {
                 instituteId={institute.id}
                 students={students}
                 courses={courses}
+                payments={payments}
                 onChange={() => loadAll(institute.id)}
               />
             )}
@@ -203,16 +204,28 @@ function StatusCard({ type }) {
   );
 }
 
-function OverviewTab({ students, courses, revenue }) {
+function OverviewTab({ students, courses, payments, revenue }) {
+  const paidByStudent = {};
+  (payments || []).forEach((p) => {
+    if (!p.student_id) return;
+    paidByStudent[p.student_id] = (paidByStudent[p.student_id] || 0) + Number(p.amount || 0);
+  });
+  const pendingFee = students.reduce((sum, s) => {
+    const totalFee = Number(courses.find((c) => c.id === s.course_id)?.total_fee || 0);
+    const paid = paidByStudent[s.id] || 0;
+    return sum + Math.max(0, totalFee - paid);
+  }, 0);
+
   return (
     <>
       <h1 className="font-display text-2xl font-bold mb-8" style={{ color: "var(--navy)" }}>
         Welcome back!
       </h1>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <StatCard label="Students" value={students} />
-        <StatCard label="Courses" value={courses} />
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
+        <StatCard label="Students" value={students.length} />
+        <StatCard label="Courses" value={courses.length} />
         <StatCard label="Total Collected" value={`₹${revenue.toLocaleString("en-IN")}`} />
+        <StatCard label="Pending Fee" value={`₹${pendingFee.toLocaleString("en-IN")}`} />
       </div>
     </>
   );
@@ -341,11 +354,32 @@ function CoursesTab({ supabase, instituteId, courses, onChange }) {
 
 /* ---------------- Students ---------------- */
 
-function StudentsTab({ supabase, instituteId, students, courses, onChange }) {
+function StudentsTab({ supabase, instituteId, students, courses, payments, onChange }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ full_name: "", father_name: "", phone: "", email: "", address: "", course_id: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const paidByStudent = {};
+  (payments || []).forEach((p) => {
+    if (!p.student_id) return;
+    paidByStudent[p.student_id] = (paidByStudent[p.student_id] || 0) + Number(p.amount || 0);
+  });
+
+  function feeSummary(student) {
+    const totalFee = Number(courses.find((c) => c.id === student.course_id)?.total_fee || 0);
+    const paid = paidByStudent[student.id] || 0;
+    let statusLabel = "Unpaid";
+    let statusColor = { background: "#FBEAE6", color: "var(--danger)" };
+    if (totalFee > 0 && paid >= totalFee) {
+      statusLabel = "Paid";
+      statusColor = { background: "#E5F3EC", color: "var(--success)" };
+    } else if (paid > 0) {
+      statusLabel = "Partial";
+      statusColor = { background: "#FFF3DA", color: "#946200" };
+    }
+    return { totalFee, paid, statusLabel, statusColor };
+  }
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -431,26 +465,40 @@ function StudentsTab({ supabase, instituteId, students, courses, onChange }) {
           <thead>
             <tr style={{ background: "#F0F1F5" }}>
               <th className="text-left px-4 py-3">Naam</th>
-              <th className="text-left px-4 py-3">Phone</th>
               <th className="text-left px-4 py-3">Course</th>
+              <th className="text-left px-4 py-3">Fee / Paid</th>
+              <th className="text-left px-4 py-3">Status</th>
               <th className="text-left px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody>
-            {students.map((s) => (
-              <tr key={s.id} className="border-t" style={{ borderColor: "#EEF0F4" }}>
-                <td className="px-4 py-3 font-medium">{s.full_name}</td>
-                <td className="px-4 py-3">{s.phone || "—"}</td>
-                <td className="px-4 py-3">{s.courses?.name || "—"}</td>
-                <td className="px-4 py-3">
-                  <button onClick={() => handleDelete(s.id)} className="text-xs" style={{ color: "var(--danger)" }}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {students.map((s) => {
+              const { totalFee, paid, statusLabel, statusColor } = feeSummary(s);
+              return (
+                <tr key={s.id} className="border-t" style={{ borderColor: "#EEF0F4" }}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{s.full_name}</div>
+                    <div className="text-xs" style={{ color: "var(--muted)" }}>{s.phone || "—"}</div>
+                  </td>
+                  <td className="px-4 py-3">{s.courses?.name || "—"}</td>
+                  <td className="px-4 py-3">
+                    ₹{paid.toLocaleString("en-IN")} / ₹{totalFee.toLocaleString("en-IN")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-1 rounded-full text-xs font-medium" style={statusColor}>
+                      {statusLabel}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => handleDelete(s.id)} className="text-xs" style={{ color: "var(--danger)" }}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {students.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>Koi student nahi hai abhi.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>Koi student nahi hai abhi.</td></tr>
             )}
           </tbody>
         </table>
