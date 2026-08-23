@@ -157,6 +157,19 @@ export default function SuperAdminPage() {
                       >
                         {inst.status}
                       </span>
+                      {inst.is_trial && (
+                        <span
+                          className="ml-2 px-2 py-1 rounded-full text-xs font-medium"
+                          style={{
+                            background: new Date(inst.trial_ends_at) < new Date() ? "#FBEAE6" : "#E9EEFB",
+                            color: new Date(inst.trial_ends_at) < new Date() ? "var(--danger)" : "#2A4B9B",
+                          }}
+                        >
+                          {new Date(inst.trial_ends_at) < new Date()
+                            ? "Demo khatam"
+                            : `Demo — ${Math.max(0, Math.ceil((new Date(inst.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))}d left`}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">{inst.plan}</td>
                     <td className="px-4 py-3 space-x-2">

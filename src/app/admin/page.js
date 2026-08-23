@@ -51,7 +51,10 @@ export default function AdminDashboard() {
 
     setInstitute(instData);
 
-    if (instData?.status === "active") {
+    const trialExpired =
+      instData?.is_trial && instData?.trial_ends_at && new Date(instData.trial_ends_at) < new Date();
+
+    if (instData?.status === "active" && !trialExpired) {
       await loadAll(instData.id);
     }
     setChecking(false);
@@ -82,6 +85,11 @@ export default function AdminDashboard() {
   }
   if (!institute) return null;
 
+  const trialExpired = institute.is_trial && institute.trial_ends_at && new Date(institute.trial_ends_at) < new Date();
+  const trialDaysLeft = institute.is_trial && institute.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(institute.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))
+    : null;
+
   const totalRevenue = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   return (
@@ -101,9 +109,19 @@ export default function AdminDashboard() {
       <main className="max-w-6xl mx-auto px-6 py-10">
         {institute.status === "pending" && <StatusCard type="pending" />}
         {institute.status === "blocked" && <StatusCard type="blocked" />}
+        {institute.status === "active" && trialExpired && <StatusCard type="trial_expired" />}
 
-        {institute.status === "active" && (
+        {institute.status === "active" && !trialExpired && (
           <>
+            {institute.is_trial && (
+              <div
+                className="rounded-xl px-4 py-3 mb-6 text-sm font-medium"
+                style={{ background: "#FFF3DA", color: "#946200" }}
+              >
+                🎁 Free demo chal raha hai — {trialDaysLeft} din baaki hai.
+              </div>
+            )}
+
             <div className="flex gap-2 mb-8 border-b" style={{ borderColor: "#E2E4EA" }}>
               {TABS.map((t) => (
                 <button
@@ -159,20 +177,26 @@ export default function AdminDashboard() {
 
 function StatusCard({ type }) {
   const isBlocked = type === "blocked";
+  const isTrialExpired = type === "trial_expired";
   return (
     <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
       <div
         className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"
-        style={{ background: isBlocked ? "#FBEAE6" : "#FFF3DA", color: isBlocked ? "var(--danger)" : "#946200" }}
+        style={{
+          background: isBlocked || isTrialExpired ? "#FBEAE6" : "#FFF3DA",
+          color: isBlocked || isTrialExpired ? "var(--danger)" : "#946200",
+        }}
       >
-        {isBlocked ? "⛔" : "⏳"}
+        {isBlocked ? "⛔" : isTrialExpired ? "⏰" : "⏳"}
       </div>
       <h1 className="font-display text-xl font-bold mb-2" style={{ color: "var(--navy)" }}>
-        {isBlocked ? "Account block hai" : "Approval ka wait ho raha hai"}
+        {isBlocked ? "Account block hai" : isTrialExpired ? "Demo khatam ho gaya" : "Approval ka wait ho raha hai"}
       </h1>
       <p className="text-sm" style={{ color: "var(--muted)" }}>
         {isBlocked
           ? "Iski wajah jaanne ke liye FeeMitra support se sampark karo."
+          : isTrialExpired
+          ? "Tumhara 3 din ka free demo khatam ho gaya hai. Aage use karne ke liye registration fee pay karo."
           : "Tumhara registration payment verify hone ke baad Super Admin approve karenge."}
       </p>
     </div>

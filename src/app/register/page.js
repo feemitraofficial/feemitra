@@ -35,6 +35,7 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [instituteId, setInstituteId] = useState(null);
+  const [intent, setIntent] = useState("pay"); // "pay" | "trial"
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -97,10 +98,15 @@ export default function RegisterPage() {
         // if upload fails, we don't block registration — just proceed without a logo
       }
 
-      // 3. Create institute row (status: pending) — generate the id
-      //    ourselves so we never need to SELECT it back (the new row
-      //    isn't visible under RLS until step 4 links an admin to it)
+      // 3. Create institute row — generate the id ourselves so we never
+      //    need to SELECT it back (the new row isn't visible under RLS
+      //    until step 4 links an admin to it)
       const instituteId = crypto.randomUUID();
+      const isTrial = intent === "trial";
+      const trialEndsAt = isTrial
+        ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
       const { error: instError } = await supabase
         .from("institutes")
         .insert({
@@ -109,8 +115,10 @@ export default function RegisterPage() {
           slug: form.slug,
           owner_email: form.ownerEmail,
           owner_phone: form.ownerPhone,
-          status: "pending",
+          status: isTrial ? "active" : "pending",
           fee_paid: false,
+          is_trial: isTrial,
+          trial_ends_at: trialEndsAt,
           logo_url: logoUrl,
         });
       if (instError) throw instError;
@@ -126,7 +134,7 @@ export default function RegisterPage() {
       if (adminError) throw adminError;
 
       setInstituteId(instituteId);
-      setStep(2);
+      setStep(isTrial ? 3 : 2);
     } catch (err) {
       setError(err.message || "Kuch galat ho gaya, dobara try karo.");
     } finally {
@@ -264,11 +272,25 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg py-2.5 font-semibold text-white"
+              onClick={() => setIntent("pay")}
+              className="w-full rounded-lg py-2.5 font-semibold text-white mb-3"
               style={{ background: "var(--navy)" }}
             >
-              {loading ? "Register ho raha hai..." : "Aage badho"}
+              {loading && intent === "pay" ? "Register ho raha hai..." : `Register karo (₹${REG_FEE})`}
             </button>
+
+            <button
+              type="submit"
+              disabled={loading}
+              onClick={() => setIntent("trial")}
+              className="w-full rounded-lg py-2.5 font-semibold"
+              style={{ background: "#FFF3DA", color: "#946200" }}
+            >
+              {loading && intent === "trial" ? "Shuru ho raha hai..." : "3 Din Free Demo Try Karo"}
+            </button>
+            <p className="text-xs text-center mt-2" style={{ color: "var(--muted)" }}>
+              Demo me turant access milega, koi payment nahi — 3 din baad renew karna hoga.
+            </p>
           </form>
         )}
 
@@ -320,14 +342,35 @@ export default function RegisterPage() {
             >
               ✓
             </div>
-            <h2 className="font-display text-lg font-bold mb-2" style={{ color: "var(--navy)" }}>
-              Registration ho gaya!
-            </h2>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-              Tumhara payment verify hone ke baad account approve ho jayega
-              (kuch ghanto me). Approval ke baad email pe pata chal jayega,
-              phir login kar sakte ho.
-            </p>
+            {intent === "trial" ? (
+              <>
+                <h2 className="font-display text-lg font-bold mb-2" style={{ color: "var(--navy)" }}>
+                  Demo shuru ho gaya!
+                </h2>
+                <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
+                  3 din ke liye pura access mil gaya hai, koi payment nahi karni padi.
+                  Turant login karke dashboard use kar sakte ho.
+                </p>
+                <Link
+                  href="/login"
+                  className="inline-block px-6 py-2.5 rounded-lg font-semibold text-white"
+                  style={{ background: "var(--navy)" }}
+                >
+                  Login karo
+                </Link>
+              </>
+            ) : (
+              <>
+                <h2 className="font-display text-lg font-bold mb-2" style={{ color: "var(--navy)" }}>
+                  Registration ho gaya!
+                </h2>
+                <p className="text-sm" style={{ color: "var(--muted)" }}>
+                  Tumhara payment verify hone ke baad account approve ho jayega
+                  (kuch ghanto me). Approval ke baad email pe pata chal jayega,
+                  phir login kar sakte ho.
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>
