@@ -57,24 +57,28 @@ export default function SuperAdminPage() {
     if (!confirm(`"${name}" ko poori tarah delete karna hai? Isse unka login account bhi hat jayega — ye undo nahi ho sakta.`)) {
       return;
     }
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-institute`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ institute_id: id }),
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-institute`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ institute_id: id }),
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(`Delete nahi ho paya: ${body.error || "Unknown error"}`);
+        return;
       }
-    );
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      alert(`Delete nahi ho paya: ${body.error || "Unknown error"}`);
-      return;
+      await loadInstitutes();
+    } catch (err) {
+      alert(`Delete nahi ho paya: ${err.message || "Network error"}`);
     }
-    loadInstitutes();
   }
 
   async function handleLogout() {
