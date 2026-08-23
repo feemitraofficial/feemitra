@@ -53,6 +53,30 @@ export default function SuperAdminPage() {
     loadInstitutes();
   }
 
+  async function deleteInstitute(id, name) {
+    if (!confirm(`"${name}" ko poori tarah delete karna hai? Isse unka login account bhi hat jayega — ye undo nahi ho sakta.`)) {
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-institute`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ institute_id: id }),
+      }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Delete nahi ho paya: ${body.error || "Unknown error"}`);
+      return;
+    }
+    loadInstitutes();
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -150,6 +174,13 @@ export default function SuperAdminPage() {
                           Block
                         </button>
                       )}
+                      <button
+                        onClick={() => deleteInstitute(inst.id, inst.name)}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                        style={{ background: "#F0F1F5", color: "var(--danger)" }}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
