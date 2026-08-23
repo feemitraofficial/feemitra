@@ -97,10 +97,14 @@ export default function RegisterPage() {
         // if upload fails, we don't block registration — just proceed without a logo
       }
 
-      // 3. Create institute row (status: pending)
-      const { data: instData, error: instError } = await supabase
+      // 3. Create institute row (status: pending) — generate the id
+      //    ourselves so we never need to SELECT it back (the new row
+      //    isn't visible under RLS until step 4 links an admin to it)
+      const instituteId = crypto.randomUUID();
+      const { error: instError } = await supabase
         .from("institutes")
         .insert({
+          id: instituteId,
           name: form.name,
           slug: form.slug,
           owner_email: form.ownerEmail,
@@ -108,14 +112,12 @@ export default function RegisterPage() {
           status: "pending",
           fee_paid: false,
           logo_url: logoUrl,
-        })
-        .select()
-        .single();
+        });
       if (instError) throw instError;
 
-      // 3. Link this user as institute admin
+      // 4. Link this user as institute admin
       const { error: adminError } = await supabase.from("institute_admins").insert({
-        institute_id: instData.id,
+        institute_id: instituteId,
         auth_user_id: signUpData.user.id,
         email: form.ownerEmail,
         full_name: form.name,
@@ -123,7 +125,7 @@ export default function RegisterPage() {
       });
       if (adminError) throw adminError;
 
-      setInstituteId(instData.id);
+      setInstituteId(instituteId);
       setStep(2);
     } catch (err) {
       setError(err.message || "Kuch galat ho gaya, dobara try karo.");
