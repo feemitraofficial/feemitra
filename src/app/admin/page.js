@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const TABS = ["Overview", "Courses", "Students", "Payments"];
+const TABS = ["Overview", "Courses", "Students", "Payments", "Staff"];
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [staff, setStaff] = useState([]);
 
   useEffect(() => {
     load();
@@ -61,14 +62,16 @@ export default function AdminDashboard() {
   }
 
   async function loadAll(instituteId) {
-    const [coursesRes, studentsRes, paymentsRes] = await Promise.all([
+    const [coursesRes, studentsRes, paymentsRes, staffRes] = await Promise.all([
       supabase.from("courses").select("*").eq("institute_id", instituteId).order("created_at", { ascending: false }),
       supabase.from("students").select("*, courses(name)").eq("institute_id", instituteId).order("created_at", { ascending: false }),
       supabase.from("payments").select("*, students(full_name)").eq("institute_id", instituteId).order("created_at", { ascending: false }),
+      supabase.from("institute_admins").select("*").eq("institute_id", instituteId).order("created_at", { ascending: false }),
     ]);
     setCourses(coursesRes.data || []);
     setStudents(studentsRes.data || []);
     setPayments(paymentsRes.data || []);
+    setStaff(staffRes.data || []);
   }
 
   async function handleLogout() {
@@ -167,6 +170,13 @@ export default function AdminDashboard() {
                 institute={institute}
                 payments={payments}
                 students={students}
+                onChange={() => loadAll(institute.id)}
+              />
+            )}
+            {tab === "Staff" && (
+              <StaffTab
+                supabase={supabase}
+                staff={staff}
                 onChange={() => loadAll(institute.id)}
               />
             )}
@@ -384,6 +394,7 @@ function Field({ label, ...props }) {
 
 function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: "", duration_months: "", total_fee: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -400,22 +411,41 @@ function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
     return (students || []).filter((s) => s.course_id === courseId).length;
   }
 
-  async function handleAdd(e) {
+  function startAdd() {
+    setEditingId(null);
+    setForm({ name: "", duration_months: "", total_fee: "" });
+    setShowForm(true);
+  }
+
+  function startEdit(c) {
+    setEditingId(c.id);
+    setForm({
+      name: c.name,
+      duration_months: c.duration_months || "",
+      total_fee: c.total_fee || "",
+    });
+    setShowForm(true);
+  }
+
+  async function handleSave(e) {
     e.preventDefault();
     setError("");
     setSaving(true);
-    const { error: err } = await supabase.from("courses").insert({
-      institute_id: instituteId,
+    const payload = {
       name: form.name,
       duration_months: Number(form.duration_months) || null,
       total_fee: Number(form.total_fee) || 0,
-    });
+    };
+    const { error: err } = editingId
+      ? await supabase.from("courses").update(payload).eq("id", editingId)
+      : await supabase.from("courses").insert({ institute_id: instituteId, ...payload });
     setSaving(false);
     if (err) {
       setError(err.message);
       return;
     }
     setForm({ name: "", duration_months: "", total_fee: "" });
+    setEditingId(null);
     setShowForm(false);
     onChange();
   }
@@ -433,7 +463,7 @@ function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
           Courses ({courses.length})
         </h2>
         <button
-          onClick={() => setShowForm((s) => !s)}
+          onClick={() => (showForm ? setShowForm(false) : startAdd())}
           className="text-sm px-4 py-2 rounded-lg font-medium text-white"
           style={{ background: "var(--navy)" }}
         >
@@ -442,7 +472,7 @@ function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleAdd} className="bg-white rounded-2xl shadow-sm p-6 mb-6 grid sm:grid-cols-3 gap-4 items-end">
+        <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm p-6 mb-6 grid sm:grid-cols-3 gap-4 items-end">
           <Field label="Course Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Field label="Duration (months)" type="number" value={form.duration_months} onChange={(e) => setForm({ ...form, duration_months: e.target.value })} />
           <Field label="Total Fee (₹)" type="number" required value={form.total_fee} onChange={(e) => setForm({ ...form, total_fee: e.target.value })} />
@@ -453,10 +483,11 @@ function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
             className="sm:col-span-3 rounded-lg py-2.5 font-semibold text-white"
             style={{ background: "var(--gold)", color: "var(--navy)" }}
           >
-            {saving ? "Saving..." : "Save Course"}
+            {saving ? "Saving..." : editingId ? "Update Course" : "Save Course"}
           </button>
         </form>
       )}
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {courses.map((c, i) => {
@@ -470,9 +501,14 @@ function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
                 >
                   {c.name.charAt(0).toUpperCase()}
                 </div>
-                <button onClick={() => handleDelete(c.id)} className="text-xs" style={{ color: "var(--danger)" }}>
-                  Delete
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={() => startEdit(c)} className="text-xs font-medium" style={{ color: "var(--navy)" }}>
+                    Edit
+                  </button>
+                  <button onClick={() => handleDelete(c.id)} className="text-xs" style={{ color: "var(--danger)" }}>
+                    Delete
+                  </button>
+                </div>
               </div>
               <p className="font-display font-bold mb-1" style={{ color: "var(--navy)" }}>{c.name}</p>
               <p className="text-lg font-bold mb-2" style={{ color: color.fg }}>
@@ -499,6 +535,7 @@ function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
 
 function StudentsTab({ supabase, instituteId, students, courses, payments, onChange }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ full_name: "", father_name: "", phone: "", email: "", address: "", course_id: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -524,27 +561,52 @@ function StudentsTab({ supabase, instituteId, students, courses, payments, onCha
     return { totalFee, paid, statusLabel, statusColor };
   }
 
-  async function handleAdd(e) {
+  function startAdd() {
+    setEditingId(null);
+    setForm({ full_name: "", father_name: "", phone: "", email: "", address: "", course_id: "" });
+    setShowForm(true);
+  }
+
+  function startEdit(s) {
+    setEditingId(s.id);
+    setForm({
+      full_name: s.full_name || "",
+      father_name: s.father_name || "",
+      phone: s.phone || "",
+      email: s.email || "",
+      address: s.address || "",
+      course_id: s.course_id || "",
+    });
+    setShowForm(true);
+  }
+
+  async function handleSave(e) {
     e.preventDefault();
     setError("");
     setSaving(true);
-    const { error: err } = await supabase.from("students").insert({
-      institute_id: instituteId,
+    const payload = {
       full_name: form.full_name,
       father_name: form.father_name || null,
       phone: form.phone || null,
       email: form.email || null,
       address: form.address || null,
       course_id: form.course_id || null,
-      admission_date: new Date().toISOString().slice(0, 10),
-      status: "active",
-    });
+    };
+    const { error: err } = editingId
+      ? await supabase.from("students").update(payload).eq("id", editingId)
+      : await supabase.from("students").insert({
+          institute_id: instituteId,
+          ...payload,
+          admission_date: new Date().toISOString().slice(0, 10),
+          status: "active",
+        });
     setSaving(false);
     if (err) {
       setError(err.message);
       return;
     }
     setForm({ full_name: "", father_name: "", phone: "", email: "", address: "", course_id: "" });
+    setEditingId(null);
     setShowForm(false);
     onChange();
   }
@@ -562,7 +624,7 @@ function StudentsTab({ supabase, instituteId, students, courses, payments, onCha
           Students ({students.length})
         </h2>
         <button
-          onClick={() => setShowForm((s) => !s)}
+          onClick={() => (showForm ? setShowForm(false) : startAdd())}
           className="text-sm px-4 py-2 rounded-lg font-medium text-white"
           style={{ background: "var(--navy)" }}
         >
@@ -571,7 +633,7 @@ function StudentsTab({ supabase, instituteId, students, courses, payments, onCha
       </div>
 
       {showForm && (
-        <form onSubmit={handleAdd} className="bg-white rounded-2xl shadow-sm p-6 mb-6 grid sm:grid-cols-2 gap-4 items-end">
+        <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm p-6 mb-6 grid sm:grid-cols-2 gap-4 items-end">
           <Field label="Student Name" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
           <Field label="Father's Name" value={form.father_name} onChange={(e) => setForm({ ...form, father_name: e.target.value })} />
           <Field label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -598,7 +660,7 @@ function StudentsTab({ supabase, instituteId, students, courses, payments, onCha
             className="sm:col-span-2 rounded-lg py-2.5 font-semibold"
             style={{ background: "var(--gold)", color: "var(--navy)" }}
           >
-            {saving ? "Saving..." : "Save Student"}
+            {saving ? "Saving..." : editingId ? "Update Student" : "Save Student"}
           </button>
         </form>
       )}
@@ -633,9 +695,14 @@ function StudentsTab({ supabase, instituteId, students, courses, payments, onCha
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => handleDelete(s.id)} className="text-xs" style={{ color: "var(--danger)" }}>
-                      Delete
-                    </button>
+                    <div className="flex gap-3">
+                      <button onClick={() => startEdit(s)} className="text-xs font-medium" style={{ color: "var(--navy)" }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(s.id)} className="text-xs" style={{ color: "var(--danger)" }}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -799,6 +866,135 @@ function PaymentsTab({ supabase, instituteId, institute, payments, students, onC
             ))}
             {payments.length === 0 && (
               <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>Koi payment record nahi hai abhi.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Staff ---------------- */
+
+function StaffTab({ supabase, staff, onChange }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function callFunction(name, payload) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Kuch galat ho gaya");
+    return body;
+  }
+
+  async function handleAdd(e) {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      await callFunction("add-staff", form);
+      setForm({ full_name: "", email: "", password: "" });
+      setShowForm(false);
+      onChange();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove(authUserId, name) {
+    if (!confirm(`"${name}" ko staff se hatana hai? Unka login bhi hat jayega.`)) return;
+    try {
+      await callFunction("remove-staff", { staff_auth_user_id: authUserId });
+      onChange();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-display text-lg font-bold" style={{ color: "var(--navy)" }}>
+          Staff ({staff.length})
+        </h2>
+        <button
+          onClick={() => setShowForm((s) => !s)}
+          className="text-sm px-4 py-2 rounded-lg font-medium text-white"
+          style={{ background: "var(--navy)" }}
+        >
+          {showForm ? "Cancel" : "+ Add Staff"}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleAdd} className="bg-white rounded-2xl shadow-sm p-6 mb-6 grid sm:grid-cols-3 gap-4 items-end">
+          <Field label="Staff Name" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+          <Field label="Email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Field label="Password" type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          {error && <p className="text-sm sm:col-span-3" style={{ color: "var(--danger)" }}>{error}</p>}
+          <button
+            type="submit"
+            disabled={saving}
+            className="sm:col-span-3 rounded-lg py-2.5 font-semibold text-white"
+            style={{ background: "var(--gold)", color: "var(--navy)" }}
+          >
+            {saving ? "Adding..." : "Add Staff"}
+          </button>
+        </form>
+      )}
+
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: "#F0F1F5" }}>
+              <th className="text-left px-4 py-3">Naam</th>
+              <th className="text-left px-4 py-3">Email</th>
+              <th className="text-left px-4 py-3">Role</th>
+              <th className="text-left px-4 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {staff.map((s) => (
+              <tr key={s.id} className="border-t" style={{ borderColor: "#EEF0F4" }}>
+                <td className="px-4 py-3 font-medium">{s.full_name}</td>
+                <td className="px-4 py-3">{s.email}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className="px-2 py-1 rounded-full text-xs font-medium capitalize"
+                    style={
+                      s.role === "admin"
+                        ? { background: "#EEEBFF", color: "#6D5FFD" }
+                        : { background: "#F0F1F5", color: "var(--muted)" }
+                    }
+                  >
+                    {s.role === "admin" ? "Owner" : s.role}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {s.role === "staff" ? (
+                    <button onClick={() => handleRemove(s.auth_user_id, s.full_name)} className="text-xs" style={{ color: "var(--danger)" }}>
+                      Remove
+                    </button>
+                  ) : (
+                    <span className="text-xs" style={{ color: "var(--muted)" }}>—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {staff.length === 0 && (
+              <tr><td colSpan={4} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>Koi staff nahi hai abhi.</td></tr>
             )}
           </tbody>
         </table>
