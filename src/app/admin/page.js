@@ -146,6 +146,7 @@ export default function AdminDashboard() {
                 supabase={supabase}
                 instituteId={institute.id}
                 courses={courses}
+                students={students}
                 onChange={() => loadAll(institute.id)}
               />
             )}
@@ -216,27 +217,153 @@ function OverviewTab({ students, courses, payments, revenue }) {
     return sum + Math.max(0, totalFee - paid);
   }, 0);
 
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+  const studentsThisWeek = students.filter((s) => new Date(s.created_at) >= oneWeekAgo).length;
+
+  const thisWeekRevenue = payments
+    .filter((p) => new Date(p.paid_on || p.created_at) >= oneWeekAgo)
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const lastWeekRevenue = payments
+    .filter((p) => {
+      const d = new Date(p.paid_on || p.created_at);
+      return d >= twoWeeksAgo && d < oneWeekAgo;
+    })
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const revenueGrowth = lastWeekRevenue > 0
+    ? Math.round(((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100)
+    : thisWeekRevenue > 0 ? 100 : 0;
+
   return (
     <>
-      <h1 className="font-display text-2xl font-bold mb-8" style={{ color: "var(--navy)" }}>
+      <h1 className="font-display text-2xl font-bold mb-1" style={{ color: "var(--navy)" }}>
         Welcome back!
       </h1>
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-        <StatCard label="Students" value={students.length} />
-        <StatCard label="Courses" value={courses.length} />
-        <StatCard label="Total Collected" value={`₹${revenue.toLocaleString("en-IN")}`} />
-        <StatCard label="Pending Fee" value={`₹${pendingFee.toLocaleString("en-IN")}`} />
+      <p className="text-sm mb-8" style={{ color: "var(--muted)" }}>Yahan hai aapke institute ka overview.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <IconStatCard
+          icon="👥" bg="#EEEBFF" fg="#6D5FFD"
+          label="Total Students" value={students.length}
+          trend={studentsThisWeek > 0 ? `+${studentsThisWeek} this week` : null}
+        />
+        <IconStatCard
+          icon="💰" bg="#E5F3EC" fg="var(--success)"
+          label="Total Collection" value={`₹${revenue.toLocaleString("en-IN")}`}
+          trend={thisWeekRevenue > 0 ? `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth}% vs last week` : null}
+        />
+        <IconStatCard
+          icon="📋" bg="#FFF3DA" fg="#946200"
+          label="Pending Fee" value={`₹${pendingFee.toLocaleString("en-IN")}`}
+          trend={pendingFee === 0 ? "Sab clear hai" : null}
+        />
+        <IconStatCard
+          icon="📚" bg="#E4EEFB" fg="#2A6FDB"
+          label="Courses" value={courses.length}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: "#EEF0F4" }}>
+          <p className="text-sm font-semibold mb-4" style={{ color: "var(--navy)" }}>Collection — Last 7 Days</p>
+          <WeeklyChart payments={payments} />
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm p-6 border flex flex-col items-center justify-center text-center" style={{ borderColor: "#EEF0F4" }}>
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center text-2xl mb-3"
+            style={{ background: "#EEEBFF", color: "#6D5FFD" }}
+          >
+            💰
+          </div>
+          <p className="text-sm mb-1" style={{ color: "var(--muted)" }}>Total Collection</p>
+          <p className="text-2xl font-bold" style={{ color: "var(--navy)" }}>₹{revenue.toLocaleString("en-IN")}</p>
+        </div>
       </div>
     </>
   );
 }
 
-function StatCard({ label, value }) {
+function IconStatCard({ icon, bg, fg, label, value, trend }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: "#EEF0F4" }}>
+    <div className="bg-white rounded-2xl shadow-sm p-5 border" style={{ borderColor: "#EEF0F4" }}>
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-3"
+        style={{ background: bg, color: fg }}
+      >
+        {icon}
+      </div>
       <p className="text-sm mb-1" style={{ color: "var(--muted)" }}>{label}</p>
-      <p className="text-3xl font-bold" style={{ color: "var(--navy)" }}>{value}</p>
+      <p className="text-2xl font-bold mb-1" style={{ color: "var(--navy)" }}>{value}</p>
+      {trend && <p className="text-xs font-medium" style={{ color: "var(--success)" }}>{trend}</p>}
     </div>
+  );
+}
+
+function WeeklyChart({ payments }) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    days.push(d);
+  }
+  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const totals = days.map((day) => {
+    const next = new Date(day);
+    next.setDate(next.getDate() + 1);
+    return (payments || [])
+      .filter((p) => {
+        const d = new Date(p.paid_on || p.created_at);
+        return d >= day && d < next;
+      })
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  });
+
+  const max = Math.max(...totals, 1);
+  const w = 560;
+  const h = 180;
+  const padX = 30;
+  const padY = 20;
+  const stepX = (w - padX * 2) / (totals.length - 1);
+
+  const points = totals.map((v, i) => {
+    const x = padX + i * stepX;
+    const y = h - padY - (v / max) * (h - padY * 2);
+    return [x, y];
+  });
+
+  const linePath = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
+  const areaPath = `${linePath} L${points[points.length - 1][0]},${h - padY} L${points[0][0]},${h - padY} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h + 24}`} className="w-full h-auto">
+      <defs>
+        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6D5FFD" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#6D5FFD" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#areaFill)" />
+      <path d={linePath} fill="none" stroke="#6D5FFD" strokeWidth="2.5" />
+      {points.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="4" fill="#6D5FFD" />
+      ))}
+      {labels.map((label, i) => (
+        <text
+          key={label}
+          x={padX + i * stepX}
+          y={h + 18}
+          textAnchor="middle"
+          fontSize="11"
+          fill="var(--muted)"
+        >
+          {label}
+        </text>
+      ))}
+    </svg>
   );
 }
 
@@ -255,11 +382,23 @@ function Field({ label, ...props }) {
 
 /* ---------------- Courses ---------------- */
 
-function CoursesTab({ supabase, instituteId, courses, onChange }) {
+function CoursesTab({ supabase, instituteId, courses, students, onChange }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", duration_months: "", total_fee: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const palette = [
+    { bg: "#EEEBFF", fg: "#6D5FFD" },
+    { bg: "#E5F3EC", fg: "var(--success)" },
+    { bg: "#E4EEFB", fg: "#2A6FDB" },
+    { bg: "#FFF3DA", fg: "#946200" },
+    { bg: "#FBEAE6", fg: "var(--danger)" },
+  ];
+
+  function studentCount(courseId) {
+    return (students || []).filter((s) => s.course_id === courseId).length;
+  }
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -319,34 +458,38 @@ function CoursesTab({ supabase, instituteId, courses, onChange }) {
         </form>
       )}
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "#F0F1F5" }}>
-              <th className="text-left px-4 py-3">Naam</th>
-              <th className="text-left px-4 py-3">Duration</th>
-              <th className="text-left px-4 py-3">Fee</th>
-              <th className="text-left px-4 py-3">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {courses.map((c) => (
-              <tr key={c.id} className="border-t" style={{ borderColor: "#EEF0F4" }}>
-                <td className="px-4 py-3 font-medium">{c.name}</td>
-                <td className="px-4 py-3">{c.duration_months ? `${c.duration_months} months` : "—"}</td>
-                <td className="px-4 py-3">₹{Number(c.total_fee || 0).toLocaleString("en-IN")}</td>
-                <td className="px-4 py-3">
-                  <button onClick={() => handleDelete(c.id)} className="text-xs" style={{ color: "var(--danger)" }}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {courses.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>Koi course nahi hai abhi.</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {courses.map((c, i) => {
+          const color = palette[i % palette.length];
+          return (
+            <div key={c.id} className="bg-white rounded-2xl shadow-sm border p-5" style={{ borderColor: "#EEF0F4" }}>
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
+                  style={{ background: color.bg, color: color.fg }}
+                >
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
+                <button onClick={() => handleDelete(c.id)} className="text-xs" style={{ color: "var(--danger)" }}>
+                  Delete
+                </button>
+              </div>
+              <p className="font-display font-bold mb-1" style={{ color: "var(--navy)" }}>{c.name}</p>
+              <p className="text-lg font-bold mb-2" style={{ color: color.fg }}>
+                ₹{Number(c.total_fee || 0).toLocaleString("en-IN")}
+              </p>
+              <div className="flex items-center justify-between text-xs" style={{ color: "var(--muted)" }}>
+                <span>{c.duration_months ? `${c.duration_months} months` : "Duration N/A"}</span>
+                <span>👤 {studentCount(c.id)} Students</span>
+              </div>
+            </div>
+          );
+        })}
+        {courses.length === 0 && (
+          <div className="sm:col-span-2 lg:col-span-3 bg-white rounded-2xl shadow-sm p-8 text-center" style={{ color: "var(--muted)" }}>
+            Koi course nahi hai abhi.
+          </div>
+        )}
       </div>
     </div>
   );
