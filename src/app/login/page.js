@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -125,20 +126,20 @@ export default function LoginPage() {
 
             {error && (
               <div
-                className="mb-5 text-sm rounded-xl px-4 py-3 flex items-start gap-2"
-                style={{ background: "#FBEAE6", color: "var(--danger)" }}
+                className="mb-6 text-sm rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
+                style={{ background: "#FBEAE6", color: "var(--danger)", border: "1px solid #F4CFC6" }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="mt-0.5 flex-shrink-0">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" className="mt-0.5 flex-shrink-0">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.6" />
                   <path d="M12 8v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   <circle cx="12" cy="16" r="1" fill="currentColor" />
                 </svg>
-                <span>{error}</span>
+                <span className="leading-snug">{error}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--navy)" }}>
+              <label className="block text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: "var(--muted)" }}>
                 Email
               </label>
               <div className="relative mb-5">
@@ -157,15 +158,16 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full rounded-xl pl-11 pr-4 py-3 text-sm transition-all outline-none"
+                  className="w-full rounded-xl pl-11 pr-4 py-3.5 text-sm transition-all duration-150 outline-none"
                   style={{
                     border: "1.5px solid #E5E7F0",
                     background: "#FAFBFC",
+                    color: "var(--navy)",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = "var(--navy)";
                     e.target.style.background = "#FFFFFF";
-                    e.target.style.boxShadow = "0 0 0 4px rgba(16,27,52,0.06)";
+                    e.target.style.boxShadow = "0 0 0 4px rgba(16,27,52,0.07)";
                   }}
                   onBlur={(e) => {
                     e.target.style.borderColor = "#E5E7F0";
@@ -175,10 +177,12 @@ export default function LoginPage() {
                 />
               </div>
 
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--navy)" }}>
-                Password
-              </label>
-              <div className="relative mb-7">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold tracking-wide uppercase" style={{ color: "var(--muted)" }}>
+                  Password
+                </label>
+              </div>
+              <div className="relative mb-8">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--muted)" }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                     <rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" strokeWidth="1.5" />
@@ -186,20 +190,21 @@ export default function LoginPage() {
                   </svg>
                 </span>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl pl-11 pr-4 py-3 text-sm transition-all outline-none"
+                  className="w-full rounded-xl pl-11 pr-11 py-3.5 text-sm transition-all duration-150 outline-none"
                   style={{
                     border: "1.5px solid #E5E7F0",
                     background: "#FAFBFC",
+                    color: "var(--navy)",
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = "var(--navy)";
                     e.target.style.background = "#FFFFFF";
-                    e.target.style.boxShadow = "0 0 0 4px rgba(16,27,52,0.06)";
+                    e.target.style.boxShadow = "0 0 0 4px rgba(16,27,52,0.07)";
                   }}
                   onBlur={(e) => {
                     e.target.style.borderColor = "#E5E7F0";
@@ -207,18 +212,43 @@ export default function LoginPage() {
                     e.target.style.boxShadow = "none";
                   }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Password chhupao" : "Password dikhao"}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-colors"
+                  style={{ color: "var(--muted)" }}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path
+                        d="M10.6 5.1A10.9 10.9 0 0112 5c5 0 9 4 10 7-.4 1.2-1.2 2.5-2.3 3.7M6.6 6.6C4.5 8 3 10 2 12c1 3 5 7 10 7 1.4 0 2.7-.3 3.9-.8"
+                        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+                      />
+                      <path d="M9.9 10a3 3 0 004.2 4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M2 12c1-3 5-7 10-7s9 4 10 7c-1 3-5 7-10 7s-9-4-10-7z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+                    </svg>
+                  )}
+                </button>
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-xl py-3.5 font-semibold text-white text-sm flex items-center justify-center gap-2 transition-transform"
+                className="w-full rounded-xl py-3.5 font-semibold text-white text-sm flex items-center justify-center gap-2 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 disabled:hover:translate-y-0"
                 style={{
                   background: submitting
                     ? "var(--navy-light)"
                     : "linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%)",
-                  boxShadow: "0 10px 24px -8px rgba(16,27,52,0.45)",
+                  boxShadow: submitting ? "none" : "0 10px 24px -8px rgba(16,27,52,0.45)",
                   opacity: submitting ? 0.85 : 1,
+                  cursor: submitting ? "not-allowed" : "pointer",
                 }}
               >
                 {submitting ? (
