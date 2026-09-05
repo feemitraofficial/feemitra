@@ -46,15 +46,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: "var(--bg)" }}>
-      {/* Left branding panel */}
+    <div className="min-h-screen flex overflow-x-hidden" style={{ background: "var(--bg)" }}>
+      {/* Left branding panel — desktop/laptop only (xl+) */}
       <div
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12"
+        className="hidden xl:flex xl:w-1/2 relative overflow-hidden flex-col justify-between p-10 xl:p-12"
         style={{
           background: "linear-gradient(145deg, var(--navy) 0%, var(--navy-light) 55%, var(--navy) 100%)",
         }}
       >
-        {/* decorative glow orbs */}
         <div
           className="absolute -top-24 -left-24 w-96 h-96 rounded-full opacity-20 pointer-events-none"
           style={{ background: "radial-gradient(circle, var(--gold) 0%, transparent 70%)" }}
@@ -75,7 +74,7 @@ export default function LoginPage() {
           >
             ADMIN CONSOLE
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-white leading-tight mb-4">
+          <h2 className="font-display text-3xl xl:text-4xl font-extrabold text-white leading-tight mb-4">
             Har fees ka <span style={{ color: "var(--gold)" }}>saaf-saaf</span> hisaab.
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: "#B9C0D4" }}>
@@ -88,22 +87,22 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Right form panel */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12 sm:px-8">
+      {/* Right form panel — full width on mobile/tablet, half on xl+ */}
+      <div className="flex-1 min-w-0 flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12 md:px-8">
         <div className="w-full max-w-sm">
-          <Link href="/" className="flex lg:hidden justify-center mb-8">
-            <img src="/logo.png" alt="FeeMitra" className="h-14" />
+          <Link href="/" className="flex xl:hidden justify-center mb-6 sm:mb-8">
+            <img src="/logo.png" alt="FeeMitra" className="h-11 sm:h-14" />
           </Link>
 
           <div
-            className="bg-white rounded-3xl p-8 sm:p-9"
+            className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-9"
             style={{
               border: "1px solid #EEF0F4",
               boxShadow: "0 20px 45px -15px rgba(16, 27, 52, 0.18), 0 8px 16px -8px rgba(16, 27, 52, 0.08)",
             }}
           >
             <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center mb-4 sm:mb-5"
               style={{ background: "#EEF0FF" }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: "var(--navy)" }}>
@@ -117,16 +116,16 @@ export default function LoginPage() {
               </svg>
             </div>
 
-            <h1 className="font-display text-2xl font-bold mb-1.5" style={{ color: "var(--navy)" }}>
+            <h1 className="font-display text-xl sm:text-2xl font-bold mb-1.5" style={{ color: "var(--navy)" }}>
               Sign In
             </h1>
-            <p className="text-sm mb-7" style={{ color: "var(--muted)" }}>
+            <p className="text-sm mb-6 sm:mb-7" style={{ color: "var(--muted)" }}>
               Apne FeeMitra account me login karo
             </p>
 
             {error && (
               <div
-                className="mb-6 text-sm rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
+                className="mb-5 sm:mb-6 text-sm rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
                 style={{ background: "#FBEAE6", color: "var(--danger)", border: "1px solid #F4CFC6" }}
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" className="mt-0.5 flex-shrink-0">
@@ -142,7 +141,7 @@ export default function LoginPage() {
               <label className="block text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: "var(--muted)" }}>
                 Email
               </label>
-              <div className="relative mb-5">
+              <div className="relative mb-4 sm:mb-5">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--muted)" }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                     <path
@@ -158,7 +157,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full rounded-xl pl-11 pr-4 py-3.5 text-sm transition-all duration-150 outline-none"
+                  className="w-full rounded-xl pl-11 pr-4 py-3 sm:py-3.5 text-sm transition-all duration-150 outline-none"
                   style={{
                     border: "1.5px solid #E5E7F0",
                     background: "#FAFBFC",
@@ -182,7 +181,7 @@ export default function LoginPage() {
                   Password
                 </label>
               </div>
-              <div className="relative mb-8">
+              <div className="relative mb-6 sm:mb-8">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--muted)" }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                     <rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" strokeWidth="1.5" />
@@ -195,7 +194,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl pl-11 pr-11 py-3.5 text-sm transition-all duration-150 outline-none"
+                  className="w-full rounded-xl pl-11 pr-11 py-3 sm:py-3.5 text-sm transition-all duration-150 outline-none"
                   style={{
                     border: "1.5px solid #E5E7F0",
                     background: "#FAFBFC",
@@ -241,7 +240,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-xl py-3.5 font-semibold text-white text-sm flex items-center justify-center gap-2 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 disabled:hover:translate-y-0"
+                className="w-full rounded-xl py-3 sm:py-3.5 font-semibold text-white text-sm flex items-center justify-center gap-2 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 disabled:hover:translate-y-0"
                 style={{
                   background: submitting
                     ? "var(--navy-light)"
@@ -271,7 +270,7 @@ export default function LoginPage() {
             </form>
           </div>
 
-          <p className="text-center text-xs mt-6" style={{ color: "var(--muted)" }}>
+          <p className="text-center text-xs mt-5 sm:mt-6 px-4" style={{ color: "var(--muted)" }}>
             Secure admin access · FeeMitra
           </p>
         </div>
