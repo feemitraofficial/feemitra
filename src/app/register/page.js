@@ -104,7 +104,7 @@ export default function RegisterPage() {
       const instituteId = crypto.randomUUID();
       const isTrial = intent === "trial";
       const trialEndsAt = isTrial
-        ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+        ? new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
       const { error: instError } = await supabase
@@ -286,10 +286,10 @@ export default function RegisterPage() {
               className="w-full rounded-lg py-2.5 font-semibold"
               style={{ background: "#FFF3DA", color: "#946200" }}
             >
-              {loading && intent === "trial" ? "Shuru ho raha hai..." : "3 Din Free Demo Try Karo"}
+              {loading && intent === "trial" ? "Shuru ho raha hai..." : "15 Din Free Demo Try Karo"}
             </button>
             <p className="text-xs text-center mt-2" style={{ color: "var(--muted)" }}>
-              Demo me turant access milega, koi payment nahi — 3 din baad renew karna hoga.
+              Demo me turant access milega, koi payment nahi — 15 din baad renew karna hoga.
             </p>
           </form>
         )}
@@ -348,7 +348,7 @@ export default function RegisterPage() {
                   Demo shuru ho gaya!
                 </h2>
                 <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
-                  3 din ke liye pura access mil gaya hai, koi payment nahi karni padi.
+                  15 din ke liye pura access mil gaya hai, koi payment nahi karni padi.
                   Turant login karke dashboard use kar sakte ho.
                 </p>
                 <Link
